@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.project.trabab.dao.PlanDao">
+
+	
+	<insert id="writePlanHeaderOk" parameterType="com.project.trabab.vo.PlanHeaderVO">
+		INSERT INTO plan_header(plan_no, plan_subject, plan_schedule_start, plan_schedule_end, member_no)
+		VALUES (plan_seq.nextval, #{plan_subject}, #{plan_schedule_start}, #{plan_schedule_end}, #{member_no})
+		<selectKey  keyProperty="plan_no"  resultType="String"  order="AFTER">
+			SELECT plan_seq.currval currentval FROM dual
+		</selectKey>
+	</insert>
+	
+	<insert id="writePlanBodyOk" parameterType="java.util.List">
+		INSERT ALL
+		<foreach collection="list" item="item" index="index">
+			INTO plan_body(plan_schedule, plan_price, plan_traffic, plan_lodge_meal, plan_memo, plan_latitude, plan_longitude,
+			plan_address, plan_location_name, plan_no)
+			VALUES(#{item.plan_schedule}, #{item.plan_price}, #{item.plan_traffic}, #{item.plan_lodge_meal}, #{item.plan_memo}, #{item.plan_latitude}, #{item.plan_longitude},
+			#{item.plan_address}, #{item.plan_location_name}, #{item.plan_no})
+		</foreach>
+		SELECT * FROM dual
+	</insert>
+	
+	<select id="getPlanHeaderView" parameterType="String" resultType="com.project.trabab.vo.PlanHeaderVO">
+		SELECT * FROM plan_header WHERE plan_no = #{plan_no}
+	</select>
+	
+	<select id="getPlanBodyView"  parameterType="String" resultType="com.project.trabab.vo.PlanBodyVO">
+		SELECT * FROM plan_body WHERE plan_no = #{plan_no}
+	</select>
+	
+	<resultMap id="planHeaderMap" type="java.util.HashMap">
+        <result javaType="java.lang.String" column="plan_no" property="board_no"/>
+        <result javaType="java.lang.String" column="plan_subject" property="board_subject"/>
+        <result javaType="java.lang.String" column="plan_schedule_start" property="board_etc1"/>
+        <result javaType="java.lang.String" column="plan_schedule_end" property="board_etc2"/>
+        <result javaType="java.lang.String" column="plan_address" property="board_etc3"/>
+        <result javaType="java.lang.String" column="plan_lodge_meal" property="board_content"/>
+	</resultMap> 
+	
+	   <select id="getPlanMyPageList" parameterType="String" resultMap="planHeaderMap">
+		SELECT plan_no, plan_subject, plan_schedule_start, plan_schedule_end, plan_lodge_meal, plan_address
+		FROM plan_header
+		NATURAL JOIN member
+		NATURAL JOIN plan_body
+		WHERE plan_no = #{plan_no}
+		AND rownum = 1
+   </select>
+	
+	<delete id="deletePlanOk" parameterType="String">
+		DELETE plan WHERE plan_no = #{plan_no}
+	</delete>
+	
+	<select id="getPlanNo" parameterType="HashMap" resultType="String">
+		SELECT plan_no FROM (
+			SELECT rownum idx, a.* FROM (
+				SELECT plan_no 
+				FROM plan_header
+				WHERE member_no = #{member_no}
+				ORDER BY plan_no DESC
+			)a
+		) WHERE idx BETWEEN #{start} AND #{end}
+	</select>
+	
+</mapper>
+
+
+
+
+
+

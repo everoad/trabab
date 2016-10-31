@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.project.trabab.dao.TravelTipDao">
+	<select id="getTravelTipList" parameterType="com.project.trabab.vo.SearchVO" resultType="com.project.trabab.vo.TravelTipVO">
+		SELECT * FROM (
+			SELECT rownum idx, a.* FROM (
+				SELECT DISTINCT traveltip_no, traveltip_category_name, traveltip_subject, to_char(traveltip_wdate, 'YY.MM.DD') traveltip_wdate, traveltip_hit, trunc(sysdate-traveltip_wdate) traveltip_gap, traveltip_comment_cnt, 
+				member_nickname, member_email, member_no  
+				FROM traveltip 
+				NATURAL JOIN traveltip_category 
+				NATURAL JOIN member
+				<where>
+				 	
+				 	<if test="stype != null and skeyList != null and stype == 'traveltip_subject' ">
+						<foreach collection="skeyList" item="item" index="index">
+							OR traveltip_subject LIKE '%${item}%'		
+						</foreach>				 		
+				 	</if>
+				 	<if test="stype != null and skeyList != null and stype == 'traveltip_content' ">
+						<foreach collection="skeyList" item="item" index="index">
+							OR traveltip_content LIKE '%${item}%'		
+						</foreach>				 		
+				 	</if>
+				 	<if test="stype != null and skeyList != null and stype == 'member_nickname' ">
+						<foreach collection="skeyList" item="item" index="index">
+							OR member_nickname LIKE '%${item}%'		
+						</foreach>				 		
+				 	</if>
+				 	<if test="traveltip_category_no != null">
+						AND traveltip_category_no = #{traveltip_category_no}
+				 	</if>
+				 	AND traveltip_notice = 'N'
+				</where>
+			
+				ORDER BY traveltip_no DESC
+			)a
+		) WHERE idx BETWEEN #{start} AND #{end}
+	</select>
+	
+	<select id="getTotalRecordNum" parameterType="com.project.trabab.vo.SearchVO" resultType="int">
+		SELECT DISTINCT count(*) total
+		FROM traveltip 
+		NATURAL JOIN member 
+		<where>
+			 	
+		 	<if test="stype != null and skeyList != null and stype == 'traveltip_subject' ">
+				<foreach collection="skeyList" item="item" index="index">
+					OR traveltip_subject LIKE '%${item}%'		
+				</foreach>				 		
+		 	</if>
+		 	<if test="stype != null and skeyList != null and stype == 'traveltip_content' ">
+				<foreach collection="skeyList" item="item" index="index">
+					OR traveltip_content LIKE '%${item}%'		
+				</foreach>				 		
+		 	</if>
+		 	<if test="stype != null and skeyList != null and stype == 'member_nickname' ">
+				<foreach collection="skeyList" item="item" index="index">
+					OR member_nickname LIKE '%${item}%'		
+				</foreach>				 		
+		 	</if>
+		 	<if test="traveltip_category_no != null">
+				AND traveltip_category_no = #{traveltip_category_no}
+		 	</if>
+		 	AND traveltip_notice = 'N'
+		</where>
+	</select>
+	
+	<select id="getTravelTipNoticeList" resultType="com.project.trabab.vo.TravelTipVO">
+		SELECT DISTINCT traveltip_no, traveltip_category_name, traveltip_subject, to_char(traveltip_wdate, 'YY.MM.DD') traveltip_wdate, traveltip_hit, trunc(sysdate-traveltip_wdate) traveltip_gap, traveltip_comment_cnt,  
+		member_nickname, member_email, member_no  
+		FROM traveltip 
+		NATURAL JOIN traveltip_category 
+		NATURAL JOIN member 
+		WHERE traveltip_notice = 'Y' 
+		ORDER BY traveltip_wdate
+	</select>
+	
+	<select id="getTravelView"  parameterType="com.project.trabab.vo.TravelTipVO" resultType="com.project.trabab.vo.TravelTipVO">
+		SELECT traveltip_no, traveltip_category_name, traveltip_subject, traveltip_content, traveltip_wdate, traveltip_hit, traveltip_comment_cnt,
+		member_nickname, member_email, member_no
+		FROM traveltip 
+		NATURAL JOIN member 
+		NATURAL JOIN traveltip_category 
+		WHERE traveltip_no = #{traveltip_no}
+	</select>
+	
+	<insert id="writeTravelTipOk" parameterType="com.project.trabab.vo.TravelTipVO">
+		INSERT INTO traveltip(traveltip_no, traveltip_subject, traveltip_content, traveltip_category_no, member_no) 
+		VALUES(traveltip_seq.nextval, #{traveltip_subject}, #{traveltip_content}, #{traveltip_category_no}, #{member_no})
+		<selectKey keyProperty="traveltip_no"  resultType="String"  order="AFTER">
+			SELECT traveltip_seq.currval FROM dual
+		</selectKey>
+	</insert>
+	
+	<update id="modifyTravelTipOk" parameterType="com.project.trabab.vo.TravelTipVO">
+		UPDATE traveltip SET traveltip_subject = #{traveltip_subject}, traveltip_category_no = #{traveltip_category_no}, traveltip_content = #{traveltip_content} 
+		WHERE traveltip_no  = #{traveltip_no}
+	</update>
+	
+	<delete id="deleteTravelTipOk" parameterType="com.project.trabab.vo.TravelTipVO">
+		DELETE traveltip WHERE traveltip_no = #{traveltip_no}
+	</delete>
+	
+	<update id="upTravelTipHit" parameterType="com.project.trabab.vo.TravelTipVO">
+		UPDATE traveltip SET traveltip_hit = traveltip_hit + 1 WHERE traveltip_no = #{traveltip_no}
+	</update>
+	
+	
+	<resultMap type="java.util.HashMap" id="wifiMap">
+		<result javaType="java.lang.String" column="telecom" property="phone"/>
+        <result javaType="java.lang.String" column="placename" property="title"/>
+        <result javaType="java.lang.String" column="kindofplace" property="category"/>
+        <result javaType="java.lang.String" column="location" property="address"/>
+        <result javaType="java.lang.String" column="silatitude" property="latitude"/>
+        <result javaType="java.lang.String" column="silongitude" property="longitude"/>
+	</resultMap>
+	
+	<select id="searchWifi" parameterType="java.util.HashMap" resultMap="wifiMap">
+		SELECT telecom, placename, kindofplace, location, silatitude, silongitude
+		FROM searchinfo WHERE location LIKE '%${keyword}%' 
+	</select>
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+

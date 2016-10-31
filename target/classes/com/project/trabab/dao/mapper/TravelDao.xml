@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.project.trabab.dao.TravelDao">
+	<select id="getTravelList" parameterType="com.project.trabab.vo.SearchVO" resultType="com.project.trabab.vo.TravelTotalVO">
+		SELECT * FROM (
+			SELECT rownum idx, a.* FROM (
+				SELECT DISTINCT travel_no, travel_subject, travel_image, travel_wdate, travel_like_cnt, travel_hashtag, travel_hit, travel_comment_cnt,
+				member_nickname, member_no
+				FROM travel_header_footer 
+				NATURAL JOIN travel_body
+				NATURAL JOIN member
+				<where>
+					<if test="stype != null and skeyList !=null and stype == 'normal' ">
+						<foreach collection="skeyList" item="item" index="index">
+							OR travel_subject LIKE '%${item}%' 
+							OR travel_content LIKE '%${item}%' 
+							OR travel_address LIKE '%${item}%' 
+						</foreach>	
+					</if>
+					<if test="stype != null and skeyList !=null and stype == 'hashtag' ">
+						<foreach collection="skeyList" item="item" index="index">
+							OR travel_hashtag LIKE '%${item}%' 
+						</foreach>	
+					</if>
+				</where>
+				<if test="order == 'wdate' ">
+					ORDER BY travel_wdate DESC
+				</if>
+				<if test="order == 'hit' ">
+					ORDER BY travel_hit DESC
+				</if>
+				<if test="order == 'like' ">
+					ORDER BY travel_like_cnt DESC
+				</if>
+			)a
+		) WHERE idx BETWEEN #{start} AND #{end}
+	</select>
+	
+	<select id="getTotalRecordNum" parameterType="com.project.trabab.vo.SearchVO" resultType="int">
+		SELECT DISTINCT count(*) total FROM (
+			SELECT travel_step 
+			FROM travel_header_footer 
+			NATURAL JOIN travel_body 
+			<where>
+				<if test="stype != null and skeyList !=null and stype == 'normal' ">
+					<foreach collection="skeyList" item="item" index="index">
+						OR travel_subject LIKE '%${item}%' 
+						OR travel_content LIKE '%${item}%' 
+						OR travel_address LIKE '%${item}%' 
+					</foreach>	
+				</if>				
+				<if test="stype != null and skeyList !=null and stype == 'hashtag' ">
+					<foreach collection="skeyList" item="item" index="index">
+						OR travel_hashtag LIKE '%${item}%' 
+					</foreach>	
+				</if>
+			</where>
+			) WHERE travel_step = 1
+	</select>
+	
+	<select id="getTravelHeaderAndFooter" parameterType="String"  resultType="com.project.trabab.vo.TravelTotalVO">
+		SELECT travel_subject, travel_schedule_start, travel_schedule_end, travel_wdate, travel_epilogue, travel_hashtag, 
+		travel_hit, travel_comment_cnt, travel_like_cnt, travel_image, 
+		member_nickname, member_email, member_no 
+		FROM travel_header_footer  
+		NATURAL JOIN member 
+		WHERE travel_no = #{travel_no}
+	</select>
+	
+	<select id="getTravelBody" parameterType="String" resultType="com.project.trabab.vo.TravelBodyVO">
+		SELECT travel_latitude, travel_longitude, travel_content, travel_location_name, travel_address, travel_step 
+		FROM travel_body 
+		WHERE travel_no = #{travel_no} 
+		ORDER BY travel_step ASC
+	</select>
+	
+	<select id="getTravelBodyOne" parameterType="com.project.trabab.vo.TravelBodyVO" resultType="com.project.trabab.vo.TravelBodyVO">
+		SELECT travel_no, travel_latitude, travel_longitude, travel_content, travel_location_name, travel_address, travel_step 
+		FROM travel_body 
+		WHERE travel_no = #{travel_no} AND travel_step = #{travel_step}
+	</select>
+	
+	
+	<update id="modifyHeaderAndFooterOk" parameterType="com.project.trabab.vo.TravelTotalVO">
+		UPDATE travel_header_footer SET travel_subject = #{travel_subject}, travel_schedule_start = #{travel_schedule_start},
+		travel_schedule_end = #{travel_schedule_end}, travel_epilogue = #{travel_epilogue}, travel_hashtag = #{travel_hashtag} 
+		WHERE travel_no = #{travel_no}
+	</update>
+	
+	<update id="modifyBodyOk" parameterType="com.project.trabab.vo.TravelBodyVO">
+		UPDATE travel_body SET travel_location_name = #{travel_location_name}, travel_latitude = #{travel_latitude}, travel_longitude = #{travel_longitude},
+		travel_address = #{travel_address}, travel_content = #{travel_content} 
+		WHERE travel_no = #{travel_no} AND travel_step = #{travel_step}
+	</update>
+	
+	<delete id="deleteBodyOne" parameterType="com.project.trabab.vo.TravelBodyVO">
+		DELETE travel_body WHERE travel_no = #{travel_no} AND travel_step = #{travel_step}
+	</delete>
+	
+	<update id="updateBodyStep" parameterType="com.project.trabab.vo.TravelBodyVO">
+		UPDATE travel_body SET travel_step = travel_step -1 WHERE travel_no = #{travel_no} AND travel_step = #{travel_step}
+	</update>
+	
+	<update id="increaseTravelHit" parameterType="String">
+		UPDATE travel_header_footer SET travel_hit = travel_hit + 1 WHERE travel_no = #{travel_no}
+	</update>
+	
+	<insert id="writeTravelHeaderOk" parameterType="com.project.trabab.vo.TravelTotalVO">
+		INSERT INTO travel_header_footer(travel_no, travel_subject, travel_schedule_start, travel_schedule_end, member_no) 
+		VALUES (travel_seq.nextval, #{travel_subject}, #{travel_schedule_start}, #{travel_schedule_end}, #{member_no})
+		<selectKey keyProperty="travel_no"  resultType="String"  order="AFTER">
+			SELECT travel_seq.currval FROM dual
+		</selectKey>
+	</insert>
+	
+	<insert id="writeTravelBodyOk" parameterType="com.project.trabab.vo.TravelBodyVO">
+		INSERT INTO travel_body(travel_latitude, travel_longitude, travel_location_name, travel_address, travel_content, travel_step, travel_no) 
+		VALUES(#{travel_latitude}, #{travel_longitude}, #{travel_location_name}, #{travel_address}, #{travel_content}, #{travel_step}, #{travel_no})
+	</insert>
+	
+	<update id="writeTravelFooterOk" parameterType="com.project.trabab.vo.TravelTotalVO">
+		UPDATE travel_header_footer SET travel_epilogue = #{travel_epilogue}, travel_hashtag = #{travel_hashtag}, travel_image = #{travel_image} WHERE travel_no = #{travel_no}
+	</update>
+	
+	<update id="writeTravelFrontImage" parameterType="HashMap">
+		UPDATE travel_header_footer SET travel_image = #{travel_image} WHERE travel_no = #{travel_no}
+	</update>
+	
+	<update id="increaseLikeCnt" parameterType="String">
+		UPDATE travel_header_footer SET travel_like_cnt = travel_like_cnt + 1 WHERE travel_no = #{travel_no}
+	</update>
+	
+	<insert id="insertLikeMember" parameterType="HashMap">
+		INSERT INTO travel_like VALUES (${travel_no}, #{member_no})
+	</insert>
+	
+	<update id="decreaseLikeCnt" parameterType="String">
+		UPDATE travel_header_footer SET travel_like_cnt = travel_like_cnt - 1 WHERE travel_no = #{travel_no}
+	</update>
+	
+	<delete id="deleteLikeMember" parameterType="HashMap">
+		DELETE travel_like WHERE member_no = ${member_no} AND travel_no = ${travel_no}
+	</delete>
+	
+	<select id="checkTravelLike" parameterType="HashMap" resultType="String">
+		SELECT member_no FROM travel_like WHERE travel_no = ${travel_no} AND member_no = ${member_no}
+	</select>
+	
+	<select id="getTravelLikeCnt" parameterType="String" resultType="String">
+		SELECT travel_like_cnt FROM travel_header_footer WHERE travel_no = #{travel_no}
+	</select>
+	
+	<delete id="deleteTravelHeaderOk" parameterType="String">
+		DELETE travel_header_footer WHERE travel_no = #{travel_no}
+	</delete>
+	
+	<delete id="deleteTraveBodylOk" parameterType="String">
+		DELETE travel_body WHERE travel_no = #{travel_no}
+	</delete>
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+

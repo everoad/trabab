@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.project.trabab.dao.TogetherDao">
+
+	<resultMap id="togetherMap" type="java.util.HashMap">
+        <result javaType="java.lang.String" column="together_address" property="together_address"/>
+        <result javaType="java.lang.String" column="together_subject" property="together_subject"/>
+        <result javaType="java.lang.String" column="together_latitude" property="together_latitude"/>
+        <result javaType="java.lang.String" column="together_longitude" property="together_longitude"/>
+        <result javaType="java.lang.String" column="together_schedule_start" property="together_schedule_start"/>
+        <result javaType="java.lang.String" column="together_schedule_end" property="together_schedule_end"/>
+        <result javaType="java.lang.String" column="together_content" property="together_content"/>
+        <result javaType="java.lang.String" column="member_no" property="member_no"/>
+        <result javaType="java.lang.String" column="member_nickname" property="member_nickname"/>
+        <result javaType="java.lang.String" column="member_email" property="member_email"/>
+        <result javaType="java.lang.String" column="member_profile_image" property="member_profile_image"/>
+	</resultMap> 
+
+	<select id="getTohetherList" resultMap="togetherMap">
+		SELECT together_address, together_subject, together_latitude, together_longitude, 
+		together_schedule_start, together_schedule_end, together_content, 
+		member_no, member_nickname, member_email, member_profile_image 
+		FROM together 
+		NATURAL JOIN member
+	</select>
+	
+	<insert id="writeTogetherOk" parameterType="com.project.trabab.vo.TogetherVO">
+		INSERT INTO together(together_no, together_subject, together_address, together_latitude, together_longitude, 
+		together_schedule_start, together_schedule_end, together_content, member_no) 
+		VALUES (together_seq.nextval, #{together_subject}, #{together_address}, #{together_latitude}, #{together_longitude}, #{together_schedule_start}, #{together_schedule_end}, #{together_content}, #{member_no})
+	</insert>
+		
+</mapper>
+
+
+
+
+
+

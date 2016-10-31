@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.project.trabab.dao.MemberDao">
+	<select id="loginOk" parameterType="com.project.trabab.vo.MemberVO" resultType="com.project.trabab.vo.MemberVO">
+		SELECT member_no, member_email, member_nickname, member_password, member_profile_image, member_power  
+		FROM member WHERE member_email = #{member_email}
+	</select>
+	
+	<insert id="joinOk" parameterType="com.project.trabab.vo.MemberVO">
+		INSERT INTO member(member_no, member_nickname, member_password, member_email, member_birthday, member_gender)
+		VALUES (member_seq.nextval, #{member_nickname}, #{member_password}, #{member_email}, #{member_birthday}, #{member_gender})
+	</insert>
+	
+	<select id="checkNickName" parameterType="String" resultType="int">
+		SELECT count(*) flag FROM member WHERE member_nickname = #{member_nickname}
+	</select>
+	
+	<select id="checkEmail" parameterType="String" resultType="int">
+		SELECT count(*) flag FROM member WHERE member_email = #{member_email}
+	</select>
+	
+	<select id="getMemberInfo" parameterType="String" resultType="com.project.trabab.vo.MemberVO">
+		SELECT member_no, member_nickname, member_jdate, member_email, member_gender, member_following_cnt, member_follower_cnt, member_profile_image, member_birthday
+		FROM member
+		WHERE member_no = #{member_no}
+	</select>
+	
+	
+	<resultMap id="followContentMap" type="java.util.HashMap">
+        <result javaType="java.lang.String" column="board_no" property="board_no"/>
+        <result javaType="java.lang.String" column="board_theme" property="board_theme"/>
+        <result javaType="java.lang.String" column="member_no" property="member_no"/>
+        <result javaType="java.lang.String" column="member_nickname" property="member_nickname"/>
+        <result javaType="java.lang.String" column="member_profile_image" property="member_profile_image"/>
+        <result javaType="java.lang.String" column="day" property="day"/>
+        <result javaType="java.lang.String" column="hour" property="hour"/>
+	</resultMap>
+	
+	<select id="checkFollowNewContent" parameterType="String" resultMap="followContentMap">
+		SELECT * FROM (
+			SELECT board_no, board_theme, member_no, board_wdate, member_nickname, member_profile_image,
+			trunc(sysdate - board_wdate) day, trunc(mod((sysdate - board_wdate), 1) * 24) hour
+			FROM (
+
+				SELECT member_no, travel_no AS board_no, travel_wdate AS board_wdate, 'travel' AS board_theme
+				FROM travel_header_footer
+				WHERE member_no IN (SELECT flw_member_no FROM follow WHERE my_member_no = #{member_no})
+
+				UNION
+				SELECT member_no, food_no AS board_no, food_wdate AS board_wdate, 'food' AS board_theme
+				FROM food 
+				WHERE member_no IN (SELECT flw_member_no FROM follow WHERE my_member_no = #{member_no})
+		
+				UNION
+				SELECT member_no, traveltip_no AS board_no, traveltip_wdate AS board_wdate, 'traveltip' AS board_theme
+				FROM traveltip 
+				WHERE member_no IN (SELECT flw_member_no FROM follow WHERE my_member_no = #{member_no})		
+
+				UNION
+				SELECT my_member_no AS member_no, 0 AS board_no, follow_date AS board_wdate, 'follow' AS board_theme
+				FROM follow
+				WHERE flw_member_no = #{member_no}
+
+			) NATURAL JOIN member
+			WHERE 2 > trunc(sysdate - board_wdate)
+			ORDER BY board_wdate DESC
+		) WHERE rownum BETWEEN 1 AND 8
+	</select>
+	
+	<insert id="addFollowing" parameterType="HashMap">
+		INSERT INTO follow(flw_member_no, my_member_no) VALUES (#{flw_member_no}, #{my_member_no})
+	</insert>
+	
+	<select id="checkFollowing" parameterType="HashMap" resultType="int">
+		SELECT count(*) FROM follow WHERE flw_member_no = #{flw_member_no} AND my_member_no = #{my_member_no}
+	</select>
+	
+	<delete id="deleteFollowing" parameterType="HashMap">
+		DELETE follow WHERE flw_member_no = #{flw_member_no} AND my_member_no = #{my_member_no}
+	</delete>
+	
+	
+	<update id="increaseFollowerCnt" parameterType="String">
+		UPDATE member SET member_follower_cnt = member_follower_cnt + 1 WHERE member_no = #{flw_member_no}
+	</update>
+	
+	<update id="decreaseFollowerCnt" parameterType="String">
+		UPDATE member SET member_follower_cnt = member_follower_cnt - 1 WHERE member_no = #{flw_member_no}
+	</update>
+	
+	<update id="increaseFollowingCnt" parameterType="String">
+		UPDATE member SET member_following_cnt = member_following_cnt + 1 WHERE member_no = #{my_member_no}
+	</update>
+	
+	<update id="decreaseFollowingCnt" parameterType="String">
+		UPDATE member SET member_following_cnt = member_following_cnt - 1 WHERE member_no = #{my_member_no}
+	</update>
+	
+	<resultMap id="MyPageMap" type="java.util.HashMap">
+        <result javaType="java.lang.String" column="board_theme" property="board_theme"/>
+        <result javaType="java.lang.String" column="board_image" property="board_image"/>
+        <result javaType="java.lang.String" column="board_subject" property="board_subject"/>
+        <result javaType="java.lang.String" column="board_no" property="board_no"/>
+        <result javaType="java.lang.String" column="board_content" property="board_content"/>
+        <result javaType="java.lang.String" column="board_wdate" property="board_wdate"/>
+        <result javaType="java.lang.String" column="board_etc1" property="board_etc1"/>      
+        <result javaType="java.lang.String" column="board_etc2" property="board_etc2"/>      
+        <result javaType="java.lang.String" column="board_etc3" property="board_etc3"/>      
+	</resultMap> 
+	
+	<select id="getMyWrittenList" parameterType="HashMap" resultMap="MyPageMap">
+		SELECT * FROM (
+		  SELECT rownum idx, a.* FROM (
+		    SELECT board_no, board_theme, member_no, board_wdate, member_nickname, member_profile_image, board_image, board_subject, board_content,
+		    board_etc1, board_etc2, board_etc3
+		    FROM (
+		      SELECT member_no, travel_no AS board_no, travel_wdate AS board_wdate, 'travel' AS board_theme, travel_image AS board_image, travel_subject AS board_subject, travel_content AS board_content,
+		      travel_schedule_start AS board_etc1, travel_schedule_end AS board_etc2, travel_address AS board_etc3
+		      FROM travel_header_footer
+		      NATURAL JOIN travel_body
+		      WHERE member_no = #{member_no}
+		      AND travel_step = 1
+		          
+		      UNION
+		      SELECT member_no, food_no AS board_no, food_wdate AS board_wdate, 'food' AS board_theme, food_image AS board_image, food_subject AS board_subject,  food_content AS board_content,
+		      food_lv_average AS board_etc1, food_schedule AS board_etc2, food_address AS board_etc3
+		      FROM food 
+		      WHERE member_no = #{member_no}
+		  
+		      UNION
+		      SELECT member_no, traveltip_no AS board_no, traveltip_wdate AS board_wdate, 'traveltip' AS board_theme, ' ' AS board_image, traveltip_subject AS board_subject, traveltip_content AS board_content,
+		      traveltip_category_name AS board_etc1, '' AS board_etc2, '' AS board_etc3
+		      FROM traveltip 
+		      NATURAL JOIN traveltip_category
+		      WHERE member_no = #{member_no}
+		      
+		    ) NATURAL JOIN member
+		    ORDER BY board_wdate DESC
+		  )a
+		) WHERE idx BETWEEN #{start} AND #{end}
+	</select>
+	
+	<select id="getMyLikeList" parameterType="HashMap" resultMap="MyPageMap">
+		SELECT * FROM (
+		  SELECT rownum idx, a.* FROM (
+		    SELECT board_no, board_theme, member_no, board_wdate, member_nickname, member_profile_image, board_image, board_subject, board_content,
+		    board_etc1, board_etc2, board_etc3
+		    FROM (
+		    	SELECT b.member_no, b.travel_no AS board_no, travel_wdate AS board_wdate, 'travel' AS board_theme, travel_image AS board_image, travel_subject AS board_subject, travel_content AS board_content,
+				travel_schedule_start AS board_etc1, travel_schedule_end AS board_etc2, travel_address AS board_etc3
+				FROM travel_like a
+				JOIN travel_header_footer b
+				ON a.travel_no = b.travel_no
+				JOIN travel_body c
+				ON b.travel_no = c.travel_no
+		        WHERE a.member_no = #{member_no}
+		        AND c.travel_step = 1
+		          
+				UNION
+				SELECT b.member_no, b.food_no AS board_no, food_wdate AS board_wdate, 'food' AS board_theme, food_image AS board_image, food_subject AS board_subject,  food_content AS board_content,
+				food_lv_average AS board_etc1, food_schedule AS board_etc2, food_address AS board_etc3
+				FROM food_like a
+				JOIN food b
+				ON a.food_no = b.food_no
+				WHERE a.member_no = #{member_no}
+		  
+		    ) NATURAL JOIN member
+		    ORDER BY board_wdate DESC
+		  )a
+		) WHERE idx BETWEEN #{start} AND #{end}
+	</select>
+	
+	<resultMap id="MyMarkerMap" type="java.util.HashMap">
+        <result javaType="java.lang.String" column="board_location_name" property="board_location_name"/>
+        <result javaType="java.lang.String" column="board_latitude" property="board_latitude"/>
+        <result javaType="java.lang.String" column="board_longitude" property="board_longitude"/>
+        <result javaType="java.lang.String" column="board_theme" property="board_theme"/>   
+	</resultMap>
+	
+	<select id="getMyListMap" parameterType="HashMap" resultMap="MyMarkerMap">
+		SELECT board_location_name, board_latitude, board_longitude, board_theme, board_no
+	         FROM (
+	           SELECT travel_location_name AS board_location_name, travel_latitude AS board_latitude, travel_longitude AS board_longitude, 'travel' AS board_theme, travel_no AS board_no
+	           FROM travel_header_footer
+	           NATURAL JOIN travel_body
+	           WHERE member_no = #{member_no}
+	           
+	           UNION
+	           SELECT food_location_name AS board_location_name, food_latitude AS board_latitude, food_longitude AS board_longitude, 'food' AS board_theme, food_no AS board_no 
+	           FROM food
+	           NATURAL JOIN food
+	           WHERE member_no = #{member_no}
+      )
+	</select>
+	
+	<resultMap type="java.util.HashMap" id="FollowMap">
+		<result javaType="java.lang.String" column="member_no" property="member_no"/>
+        <result javaType="java.lang.String" column="member_nickname" property="member_nickname"/>
+        <result javaType="java.lang.String" column="member_email" property="member_email"/>
+	</resultMap>
+	
+ 	<select id="getFollowingList" parameterType="String" resultMap="FollowMap">
+ 		SELECT member_no, member_nickname, member_email
+ 		FROM member 
+ 		WHERE member_no
+ 		IN (SELECT flw_member_no FROM follow WHERE my_member_no = #{member_no})
+	</select> 
+	
+			
+ 	<select id="getFollowerList" parameterType="String" resultMap="FollowMap">
+ 		SELECT member_no, member_nickname, member_email 
+		FROM follow
+		JOIN member 
+		ON follow.my_member_no = member.member_no
+		WHERE flw_member_no = #{member_no}
+	</select> 
+	
+	<select id="getMyinfoView" parameterType="String" resultType="com.project.trabab.vo.MemberVO">
+		SELECT member_nickname, member_password, member_email, member_birthday, member_gender, member_profile_image 
+		FROM member 
+		WHERE member_no = #{member_no}
+	</select>
+
+	<update id="modifyMyinfoOk" parameterType="com.project.trabab.vo.MemberVO">
+		UPDATE member 
+		<trim prefix="SET" suffixOverrides=",">
+			<if test="member_nickname != null">member_nickname=#{member_nickname},</if>
+			<if test="member_password != null">member_password=#{member_password},</if>
+			<if test="member_profile_image != null">member_profile_image=#{member_profile_image},</if>
+		</trim>
+		WHERE member_no = #{member_no}
+	</update>
+	
+	
+	<resultMap id="getAgeCountMap" type="java.util.HashMap">
+        <result javaType="java.lang.String" column="age" property="age"/>
+        <result javaType="java.lang.Integer" column="age_count" property="age_count"/>
+   </resultMap> 
+   
+   <select id="getAgeCount" resultMap="getAgeCountMap">
+      SELECT age, count(*) age_count FROM (
+         SELECT DECODE(trunc(to_number(sysdate-to_date(member_birthday))/3650) * 10, '', 0, trunc(to_number(sysdate-to_date(member_birthday))/3650) * 10) age
+         FROM member)
+      GROUP BY age
+      ORDER BY age
+   </select>
+   
+   <resultMap id="getBoardCountMap" type="java.util.HashMap">
+        <result javaType="java.lang.String" column="board_theme" property="board_theme"/>
+        <result javaType="java.lang.Integer" column="board_count" property="board_count"/>
+   </resultMap>
+   
+   <select id="getBoardCount" resultMap="getBoardCountMap">
+      SELECT board_theme, board_count FROM (
+         SELECT '여행기' board_theme, count(*) board_count FROM travel_header_footer
+         
+         UNION
+         SELECT '맛집' board_theme, count(*) board_count FROM food
+         
+         UNION
+         SELECT '여행팁' board_theme, count(*) board_count FROM traveltip
+         
+         UNION
+         SELECT '같이가요' board_theme, count(*) board_count FROM together
+      )
+   </select>
+   
+   <resultMap id="getBoardHitSumMap" type="java.util.HashMap">
+        <result javaType="java.lang.String" column="board_theme" property="board_theme"/>
+        <result javaType="java.lang.Integer" column="board_hit" property="board_hit"/>
+   </resultMap>
+   
+   <select id="getBoardHitSum" resultMap="getBoardHitSumMap">
+      SELECT board_theme, board_hit FROM (
+         SELECT '여행기' board_theme, sum(travel_hit) board_hit FROM travel_header_footer
+         
+         UNION
+         SELECT '맛집' board_theme, sum(food_hit) board_hit FROM food
+         
+         UNION
+         SELECT '여행팁' board_theme, sum(traveltip_hit) board_hit FROM traveltip
+      )
+   </select>
+   
+   <select id="getNormalMemberList" resultType="com.project.trabab.vo.MemberVO">
+      SELECT member_no, member_nickname, member_birthday, member_email, member_gender, member_following_cnt, member_follower_cnt, member_jdate, member_profile_image, member_out, member_power
+      FROM member
+      WHERE member_power = 'normal'
+   </select>
+   
+   <select id="getPowerMemberList" resultType="com.project.trabab.vo.MemberVO">
+      SELECT member_no, member_nickname, member_birthday, member_email, member_gender, member_following_cnt, member_follower_cnt, member_jdate, member_profile_image 
+      FROM member
+      WHERE member_power = 'power'
+   </select>
+   
+   <resultMap id="getGenderMap" type="java.util.HashMap">
+        <result javaType="java.lang.String" column="member_gender" property="member_gender"/>
+        <result javaType="java.lang.Integer" column="member_gender_cnt" property="member_gender_cnt"/>
+   </resultMap>
+   
+   <select id="getGenderCount" resultMap="getGenderMap">
+      SELECT DECODE(member_gender, 'Male', '남자', 'Female', '여자') member_gender, count(*) member_gender_cnt 
+      FROM member
+      GROUP BY member_gender
+   </select>
+   
+   <update id="outMemberOk" parameterType="String">
+		UPDATE member SET member_out = 'out' WHERE member_no = #{member_no}
+   </update>
+   
+   <update id="powerUp" parameterType="String">
+		UPDATE member SET member_power = 'power' WHERE member_no = #{member_no}
+   </update>
+   
+   <update id="powerDown" parameterType="String">
+		UPDATE member SET member_power = 'normal' WHERE member_no = #{member_no}
+   </update>
+   
+   <select id="getPowerMember" resultType="String">
+   		SELECT count(*) power_count FROM member
+   		WHERE member_power = 'power'
+   </select>
+   
+
+</mapper>

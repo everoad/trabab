@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.project.trabab.dao.FoodDao">
+	
+	<insert id="writeFoodOk"  parameterType="com.project.trabab.vo.FoodVO">
+		INSERT INTO food(food_no, food_subject, food_content, food_schedule, food_latitude, food_longitude, food_location_name, food_address, 
+		food_lvtasty, food_lvtraffic, food_lvservice, food_lvprice, food_lvhonbab, food_hashtag, member_no, food_image, food_lv_average) 
+		VALUES (food_seq.nextval, #{food_subject}, #{food_content}, #{food_schedule}, #{food_latitude}, #{food_longitude}, #{food_location_name}, #{food_address},
+		#{food_lvtasty}, #{food_lvtraffic}, #{food_lvservice}, #{food_lvprice}, #{food_lvhonbab}, #{food_hashtag}, #{member_no}, #{food_image}, #{food_lv_average})
+		<selectKey keyProperty="food_no"  resultType="String"  order="AFTER">
+			SELECT food_seq.currval FROM dual
+		</selectKey>
+	</insert>
+	
+	<update id="modifyFoodOk" parameterType="com.project.trabab.vo.FoodVO">
+		UPDATE food SET food_subject = #{food_subject}, food_content = #{food_content}, food_schedule = #{food_schedule}, food_latitude = #{food_latitude}, food_longitude = #{food_longitude}, 
+		food_location_name = #{food_location_name}, food_address = #{food_address}, food_lvtasty = #{food_lvtasty}, food_lvtraffic = #{food_lvtraffic}, food_lvservice =#{food_lvservice}, food_lvprice = #{food_lvprice}, 
+		food_lvhonbab = #{food_lvhonbab}, food_hashtag = #{food_hashtag}, food_image = #{food_image} WHERE food_no = #{food_no}
+	</update>
+	
+	<update id="increaseFoodHit" parameterType="String">
+		UPDATE food SET food_hit = food_hit + 1 where food_no= #{food_no}
+	</update>
+	
+	<delete id="deleteFoodOk" parameterType="String">
+		DELETE food WHERE food_no = #{food_no}
+	</delete>
+	
+	<select id="getFoodList" parameterType="com.project.trabab.vo.SearchVO" resultType="com.project.trabab.vo.FoodVO">
+		SELECT * FROM (
+			SELECT rownum idx, a.* FROM (
+				SELECT DISTINCT food_no, food_subject, food_image, food_wdate, food_location_name, food_like_cnt, food_comment_cnt, food_hit, food_hashtag, food_lv_average, 
+				member_nickname, member_no 
+				FROM food 
+				NATURAL JOIN member 
+				<where>
+					<if test="stype != null and skeyList !=null and stype == 'normal' ">
+						<foreach collection="skeyList" item="item" index="index">
+							OR food_subject LIKE '%${item}%' 
+							OR food_content LIKE '%${item}%' 
+							OR food_address LIKE '%${item}%' 
+						</foreach>	
+					</if>				
+					<if test="stype != null and skeyList !=null and stype == 'hashtag' ">
+						<foreach collection="skeyList" item="item" index="index">
+							OR food_hashtag LIKE '%${item}%' 
+						</foreach>	
+					</if>
+				</where>
+				<if test="order == 'wdate' ">
+					ORDER BY food_wdate DESC
+				</if>
+				<if test="order == 'hit' ">
+					ORDER BY food_hit DESC
+				</if>
+				<if test="order == 'like' ">
+					ORDER BY food_like_cnt DESC
+				</if>
+			)a
+		) WHERE idx BETWEEN #{start} AND #{end}
+	</select>
+	
+	<select id="getTotalRecordNum" parameterType="com.project.trabab.vo.SearchVO" resultType="int">
+		SELECT DISTINCT count(*) total
+		FROM food 
+		<where>
+			<if test="stype != null and skeyList !=null and stype == 'normal' ">
+				<foreach collection="skeyList" item="item" index="index">
+					OR food_subject LIKE '%${item}%' 
+					OR food_content LIKE '%${item}%' 
+					OR food_address LIKE '%${item}%' 
+				</foreach>	
+			</if>				
+			<if test="stype != null and skeyList !=null and stype == 'hashtag' ">
+				<foreach collection="skeyList" item="item" index="index">
+					OR food_hashtag LIKE '%${item}%' 
+				</foreach>	
+			</if>
+		</where>
+	</select>
+	
+	<select id="getFoodContentView" parameterType="String" resultType="com.project.trabab.vo.FoodVO">
+		SELECT food_subject, food_schedule, food_content, to_char(food_wdate, 'YYYY.MM.DD') food_wdate, food_latitude, 
+		food_longitude, food_location_name, food_address, food_image, 
+		food_lvtasty, food_lvtraffic, food_lvservice, food_lvprice, food_lvhonbab, food_hashtag, food_hit, food_like_cnt, food_comment_cnt, 
+		member_no, member_nickname, member_email 
+		FROM food 
+		NATURAL JOIN member 
+		WHERE food_no = #{food_no}
+	</select>
+	
+	
+	
+	<update id="increaseLikeCnt" parameterType="String">
+		UPDATE food SET food_like_cnt = food_like_cnt + 1 WHERE food_no = #{food_no}
+	</update>
+	
+	<insert id="insertLikeMember" parameterType="HashMap">
+		INSERT INTO food_like VALUES (${food_no}, #{member_no})
+	</insert>
+	
+	<update id="decreaseLikeCnt" parameterType="String">
+		UPDATE food SET food_like_cnt = food_like_cnt - 1 WHERE food_no = #{food_no}
+	</update>
+	
+	<delete id="deleteLikeMember" parameterType="HashMap">
+		DELETE food_like WHERE member_no = ${member_no} AND food_no = ${food_no}
+	</delete>
+	
+	<select id="checkFoodLike" parameterType="HashMap" resultType="String">
+		SELECT member_no FROM food_like WHERE food_no = ${food_no} AND member_no = ${member_no}
+	</select>
+	
+	<select id="getFoodLikeCnt" parameterType="String" resultType="String">
+		SELECT food_like_cnt FROM food WHERE food_no = #{food_no}
+	</select>
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+

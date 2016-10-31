@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.project.trabab.dao.ImageDao">
+	<insert id="writeTravelImageOk" parameterType="java.util.List">
+		INSERT ALL 
+		<foreach collection="list" item="item" index="index">
+			INTO travel_image(travel_image_name, travel_no, travel_step) 
+			VALUES (#{item.travel_image_name}, #{item.travel_no}, #{item.travel_step})
+		</foreach>
+		SELECT * FROM dual
+	</insert>
+
+	<select id="getTravelImageList" parameterType="HashMap" resultType="com.project.trabab.vo.TravelImageVO">
+		SELECT travel_image_name
+		FROM travel_image WHERE travel_no = ${travel_no} AND travel_step = ${travel_step}
+	</select>
+	
+	<select id="getTravelImageOne" parameterType="String" resultType="com.project.trabab.vo.TravelImageVO">
+		SELECT travel_image_name
+		FROM travel_image WHERE travel_no = #{travel_no} AND rownum = 1
+	</select>
+	
+	<select id="getTravelFrontImage" parameterType="String" resultType="String">
+		SELECT travel_image
+		FROM travel_header_footer WHERE travel_no = #{travel_no}
+	</select>
+	
+	<delete id="deleteTravelImage" parameterType="HashMap">
+		DELETE travel_image WHERE travel_no = ${travel_no}
+		AND travel_step = ${travel_step}
+		AND trave_image_name = ${travel_image_name}
+	</delete>
+	
+	<delete id="deleteTravelImageListOk" parameterType="java.util.List">
+		DELETE travel_image WHERE travel_image_name IN
+		<foreach collection="list" item="item" open="(" separator=", " close=")">
+			#{item.travel_image_name} 
+		</foreach>
+	</delete>
+	
+	<insert id="writeFoodImageOk" parameterType="java.util.List">
+		INSERT ALL 
+		<foreach collection="list" item="item" index="index">
+			INTO food_image(food_image_name, food_no) 
+			VALUES (#{item.food_image_name}, #{item.food_no})
+		</foreach>
+		SELECT * FROM dual
+	</insert>
+
+	<select id="getFoodImageList" parameterType="String" resultType="com.project.trabab.vo.FoodImageVO">
+		SELECT food_image_name FROM food_image WHERE food_no = #{food_no}
+	</select>
+	
+	<delete id="deleteFoodImageListOk" parameterType="java.util.List">
+		DELETE food_image WHERE food_image_name IN
+		<foreach collection="list" item="item" open="(" separator=", " close=")">
+			#{item.food_image_name}
+		</foreach>
+	</delete>
+	
+	<delete id="deleteFoodImageOk" parameterType="String">
+		DELETE food_image WHERE food_no = #{food_no}
+	</delete>
+	
+	<delete id="deleteTravelImageOk" parameterType="String">
+		DELETE travel_image WHERE travel_no = #{travel_no}
+	</delete>
+	
+</mapper>

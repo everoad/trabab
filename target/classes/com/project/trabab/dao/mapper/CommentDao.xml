@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.project.trabab.dao.CommentDao">
+
+	<!-- <resultMap id="jsoncustom" type="com.project.trabab.core.JSONCustom">
+		<result property="comment_no" column="comment_no" typeHandler="com.project.trabab.core.JSONTypeHandler" />
+		<result property="comment_content" column="comment_content" typeHandler="com.project.trabab.core.JSONTypeHandler" />
+		<result property="comment_wdate" column="comment_wdate" typeHandler="com.project.trabab.core.JSONTypeHandler" />
+		<result property="member_nickname" column="member_nickname" typeHandler="com.project.trabab.core.JSONTypeHandler" />
+		<result property="member_no" column="member_no" typeHandler="com.project.trabab.core.JSONTypeHandler" />
+		<result property="member_profile_image" column="member_profile_image" typeHandler="com.project.trabab.core.JSONTypeHandler" />
+	</resultMap> -->
+	
+	
+	<resultMap id="hashmapResult" type="java.util.HashMap">
+        <result javaType="java.lang.String" column="comment_no" property="comment_no"/>
+        <result javaType="java.lang.String" column="comment_content" property="comment_content"/>
+        <result javaType="java.lang.String" column="comment_wdate" property="comment_wdate"/>
+        <result javaType="java.lang.String" column="member_nickname" property="member_nickname"/>
+        <result javaType="java.lang.String" column="member_no" property="member_no"/>
+        <result javaType="java.lang.String" column="member_profile_image" property="member_profile_image"/>
+	</resultMap> 
+	
+	<select id="getCommentList" parameterType="com.project.trabab.vo.CommentVO" resultMap="hashmapResult">
+		SELECT comment_no, comment_content, comment_wdate, 
+		member_nickname, member_no, member_profile_image 
+		FROM ${comment_theme}_comment 
+		NATURAL JOIN member 
+		WHERE board_no = #{board_no}
+		ORDER BY comment_no desc
+	</select>
+	
+	<insert id="writeCommentOk" parameterType="com.project.trabab.vo.CommentVO">
+		INSERT INTO ${comment_theme}_comment(comment_no, comment_content, member_no, board_no, comment_wdate) 
+		VALUES (${comment_theme}_comment_seq.nextval, #{comment_content}, #{member_no}, #{board_no}, sysdate)
+	</insert>
+	
+	<delete id="deleteCommentOk" parameterType="com.project.trabab.vo.CommentVO">
+		DELETE ${comment_theme}_comment WHERE comment_no = #{comment_no}
+	</delete>
+	
+	<update id="increaseCommentCnt" parameterType="com.project.trabab.vo.CommentVO">
+		<if test="comment_theme == 'travel' ">
+			UPDATE travel_header_footer SET travel_comment_cnt = travel_comment_cnt + 1 WHERE travel_no = #{board_no}
+		</if>
+		<if test="comment_theme != 'travel' ">
+			UPDATE ${comment_theme} SET ${comment_theme}_comment_cnt = ${comment_theme}_comment_cnt + 1 WHERE ${comment_theme}_no = #{board_no}
+		</if>
+	</update>
+	
+	<update id="decreaseCommentCnt" parameterType="com.project.trabab.vo.CommentVO">
+		<if test="comment_theme == 'travel' ">
+			UPDATE travel_header_footer SET travel_comment_cnt = travel_comment_cnt - 1 WHERE travel_no = #{board_no}
+		</if>
+		<if test="comment_theme != 'travel' ">
+			UPDATE ${comment_theme} SET ${comment_theme}_comment_cnt = ${comment_theme}_comment_cnt - 1 WHERE ${comment_theme}_no = #{board_no}
+		</if>
+	</update>
+	
+	<select id="getCommentCnt" parameterType="com.project.trabab.vo.CommentVO" resultType="int">
+		<if test="comment_theme == 'travel' ">
+			SELECT travel_comment_cnt FROM travel_header_footer WHERE travel_no = #{board_no}
+		</if>
+		<if test="comment_theme != 'travel' ">
+			SELECT ${comment_theme}_comment_cnt FROM ${comment_theme} WHERE ${comment_theme}_no = #{board_no}
+		</if>
+	</select>
+	
+</mapper>
+
+
+
+
+
+
